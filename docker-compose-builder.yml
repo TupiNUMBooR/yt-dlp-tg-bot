@@ -1,0 +1,10 @@
+services:
+  yt-dlp-tg-bot:
+    image: tupinumboor/yt-dlp-tg-bot
+    build:
+      tags:
+        - "tupinumboor/yt-dlp-tg-bot:1.1"
+    environment:
+      BOT_TOKEN: "${BOT_TOKEN}"
+    volumes:
+      - "./downloads:/downloads"
