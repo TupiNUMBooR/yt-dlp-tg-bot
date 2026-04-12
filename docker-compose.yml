@@ -7,4 +7,21 @@ services:
       - .env
     volumes:
       - ./app/requested:/app/requested
+
+  ms-server:
+    build:
+      context: ./ms-server
+    restart: unless-stopped
+    volumes:
+      - ./app/done:/app/done
+
+  ms-cloudflared:
+    build:
+      context: ./ms-cloudflared
+    restart: unless-stopped
+    depends_on:
+      - ms-server
+    environment:
+      TUNNEL_URL: http://ms-server:3000
+    volumes:
       - ./app/shared:/app/shared
