@@ -67,6 +67,24 @@ read_public_base_url() {
   printf '%s\n' "${url%/}"
 }
 
+format_size() {
+  local bytes="$1"
+
+  awk -v bytes="$bytes" '
+    BEGIN {
+      if (bytes < 1024) {
+        printf "%d B\n", bytes
+      } else if (bytes < 1024 * 1024) {
+        printf "%.1f KB\n", bytes / 1024
+      } else if (bytes < 1024 * 1024 * 1024) {
+        printf "%.1f MB\n", bytes / (1024 * 1024)
+      } else {
+        printf "%.1f GB\n", bytes / (1024 * 1024 * 1024)
+      }
+    }
+  '
+}
+
 edit_telegram() {
   local text="$1"
 
@@ -127,6 +145,9 @@ process_dir() {
   local base
   local url
   local msg
+  local file_path
+  local file_size_bytes
+  local file_size_human
 
   request_id="$(basename "$dir")"
 
@@ -139,13 +160,19 @@ process_dir() {
   [ -n "$SOURCE_URL" ] || { fail_current "$dir" "SOURCE_URL empty"; return 0; }
   [ -n "$FILE_NAME" ] || { fail_current "$dir" "FILE_NAME empty"; return 0; }
 
+  file_path="$dir/$FILE_NAME"
+  [ -f "$file_path" ] || { fail_current "$dir" "file not found"; return 0; }
+
   if ! base="$(read_public_base_url)"; then
     log "$dir" "no public_url yet, will retry later"
     return 1
   fi
 
+  file_size_bytes="$(wc -c < "$file_path" | tr -d '[:space:]')"
+  file_size_human="$(format_size "$file_size_bytes")"
+
   url="$base/$request_id"
-  msg="<a href=\"$url\">🔗 Download</a>"
+  msg="<a href=\"$url\">🔗 Download $file_size_human</a>"
 
   if ! edit_telegram_with_retry "$dir" "$msg"; then
     fail_current "$dir" "telegram edit failed"
