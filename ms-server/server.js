@@ -70,6 +70,18 @@ const server = http.createServer((req, res) => {
   fs.createReadStream(filePath).pipe(res);
 });
 
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+function shutdown() {
+  console.log("Shutting down...");
+
+  server.close(() => {
+    console.log("Server closed");
+    process.exit(0);
+  });
+}
+
 server.listen(PORT, HOST, () => {
   console.log(`Listening on ${HOST}:${PORT}`);
 });

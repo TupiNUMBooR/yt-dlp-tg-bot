@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'kill -TERM 0; wait' TERM INT
 
 REQUESTED_DIR="/app/requested"
 API_URL="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN?}"
@@ -102,4 +103,4 @@ main() {
   done
 }
 
-main
+main & wait

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'kill -TERM 0; wait' TERM INT
 
 YT_DLP_UPDATE_INTERVAL_SECONDS="${YT_DLP_UPDATE_INTERVAL_SECONDS:-3600}"
 SLEEP_SECONDS="${SLEEP_SECONDS:-3}"
@@ -138,4 +139,4 @@ while true; do
   if [ "$found" -eq 0 ]; then
     sleep "$SLEEP_SECONDS"
   fi
-done
+done & wait

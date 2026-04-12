@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 set -eu
+trap 'kill -TERM 0; wait' TERM INT
 
 : "${TUNNEL_URL:?}"
 
@@ -15,4 +16,4 @@ cloudflared tunnel --no-autoupdate --url "$TUNNEL_URL" 2>&1 \
   | while read -r url; do
       echo "$url" > "$URL_FILE"
       echo "Url: $url"
-    done
+    done & wait
