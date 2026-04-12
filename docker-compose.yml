@@ -1,7 +1,11 @@
 services:
   ms-ingest:
+    image: tupinumboor/ydtb-ingest
     build:
       context: ./ms-ingest
+      tags:
+        - "tupinumboor/ydtb-ingest:local"
+        - "tupinumboor/ydtb-ingest:latest"
     restart: unless-stopped
     env_file:
       - .env
@@ -9,15 +13,23 @@ services:
       - ./app/requested:/app/requested
 
   ms-server:
+    image: tupinumboor/ydtb-server
     build:
       context: ./ms-server
+      tags:
+        - "tupinumboor/ydtb-server:local"
+        - "tupinumboor/ydtb-server:latest"
     restart: unless-stopped
     volumes:
       - ./app/published:/app/published
 
   ms-cloudflared:
+    image: tupinumboor/ydtb-cloudflared
     build:
       context: ./ms-cloudflared
+      tags:
+        - "tupinumboor/ydtb-cloudflared:local"
+        - "tupinumboor/ydtb-cloudflared:latest"
     restart: unless-stopped
     environment:
       TUNNEL_URL: http://ms-server:3000
@@ -30,8 +42,12 @@ services:
       retries: 30
 
   ms-downloader:
+    image: tupinumboor/ydtb-downloader
     build:
       context: ./ms-downloader
+      tags:
+        - "tupinumboor/ydtb-downloader:local"
+        - "tupinumboor/ydtb-downloader:latest"
     restart: unless-stopped
     env_file:
       - .env
@@ -42,8 +58,12 @@ services:
       - ./app/failed:/app/failed
 
   ms-publisher:
+    image: tupinumboor/ydtb-publisher
     build:
       context: ./ms-publisher
+      tags:
+        - "tupinumboor/ydtb-publisher:local"
+        - "tupinumboor/ydtb-publisher:latest"
     restart: unless-stopped
     depends_on:
       ms-cloudflared:
