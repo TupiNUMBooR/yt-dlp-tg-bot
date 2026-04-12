@@ -67,7 +67,7 @@ create_job() {
     curl --silent --show-error --fail \
       --request POST "$API_URL/sendMessage" \
       --data-urlencode "chat_id=$chat_id" \
-      --data-urlencode "text=⏳ Queued" \
+      --data-urlencode "text=⏳ Queued..." \
       --data "parse_mode=HTML" \
       --data "reply_to_message_id=$request_message_id"
   )"

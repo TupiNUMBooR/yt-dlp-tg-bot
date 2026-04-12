@@ -32,7 +32,15 @@ function sendText(res, statusCode, text) {
 }
 
 function buildContentDisposition(fileName) {
-  return `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+  const safeName = fileName
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+    .trim();
+
+  const fallback = safeName
+    .replace(/["\\]/g, "_")
+    .replace(/[^\x20-\x7E]/g, "_");
+
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(safeName)}`;
 }
 
 const server = http.createServer((req, res) => {

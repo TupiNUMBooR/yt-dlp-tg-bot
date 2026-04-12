@@ -172,7 +172,7 @@ process_dir() {
   file_size_human="$(format_size "$file_size_bytes")"
 
   url="$base/$request_id"
-  msg="<a href=\"$url\">🔗 Download $file_size_human</a>"
+  msg="<a href=\"$url\">💾 Download</a> $file_size_human"
 
   if ! edit_telegram_with_retry "$dir" "$msg"; then
     fail_current "$dir" "telegram edit failed"

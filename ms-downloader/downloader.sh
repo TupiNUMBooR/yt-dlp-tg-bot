@@ -105,7 +105,7 @@ process() {
     return
   fi
 
-  edit_telegram_message "$chat_id" "$response_message_id" "⬇️ Downloading"
+  edit_telegram_message "$chat_id" "$response_message_id" "⏳ Getting video…"
 
   log "start $name -> $url"
 
