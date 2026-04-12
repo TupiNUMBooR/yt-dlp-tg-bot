@@ -25,3 +25,13 @@ services:
       TUNNEL_URL: http://ms-server:3000
     volumes:
       - ./app/shared:/app/shared
+
+  ms-downloader:
+    build:
+      context: ./ms-downloader
+    restart: unless-stopped
+    volumes:
+      - ./app/requested:/app/requested
+      - ./app/downloading:/app/downloading
+      - ./app/downloaded:/app/downloaded
+      - ./app/failed:/app/failed
