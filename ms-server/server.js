@@ -83,11 +83,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  log("download:", filePath);
+  const stat = fs.statSync(filePath);
+  log("download:", filePath, `(${stat.size} bytes)`);
 
   res.writeHead(200, {
     "Content-Type": "application/octet-stream",
     "Content-Disposition": buildContentDisposition(info.FILE_NAME),
+    "Content-Length": stat.size,
     "Cache-Control": "no-store",
   });
 
