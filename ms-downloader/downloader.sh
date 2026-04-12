@@ -48,8 +48,7 @@ edit_telegram_message() {
     --data-urlencode "text=$text" \
     --data "parse_mode=HTML" \
     > /dev/null; then
-
-    log "telegram edit failed (non-fatal)"
+    log "telegram edit failed"
   fi
 }
 
@@ -147,6 +146,7 @@ process() {
   fi
 
   log "failed"
+  edit_telegram_message "$chat_id" "$response_message_id" "❌ Failed"
 
   rm -rf "$fail"
   mv "$down" "$fail"
