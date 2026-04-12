@@ -1,9 +1,10 @@
-version: '2.0'
 services:
-  yt-dlp-tg-bot:
-    image: "tupinumboor/yt-dlp-tg-bot"
-    restart: "always"
-    environment:
-      BOT_TOKEN: "${BOT_TOKEN}"
+  ms-ingest:
+    build:
+      context: ./ms-ingest
+    restart: unless-stopped
+    env_file:
+      - .env
     volumes:
-      - "./downloads:/downloads"
+      - ./app/requested:/app/requested
+      - ./app/shared:/app/shared
