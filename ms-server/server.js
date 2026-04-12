@@ -4,7 +4,11 @@ const path = require("path");
 
 const HOST = "0.0.0.0";
 const PORT = Number(process.env.PORT || 3000);
-const DOWNLOADS_DIR = "/app/done";
+const DOWNLOADS_DIR = "/app/published";
+
+function log(...args) {
+  console.log("[ms-server]", ...args);
+}
 
 function parseInfoFile(infoPath) {
   const result = {};
@@ -28,10 +32,12 @@ function sendText(res, statusCode, text) {
 }
 
 function buildContentDisposition(fileName) {
-  return `attachment; filename="${fileName.replace(/"/g, "")}"`;
+  return `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
 const server = http.createServer((req, res) => {
+  log(req.method, req.url);
+
   if (req.method !== "GET") {
     sendText(res, 405, "Method Not Allowed");
     return;
@@ -46,20 +52,38 @@ const server = http.createServer((req, res) => {
 
   const jobId = reqPath.replace(/^\/+/, "");
 
-  if (!/^[a-f0-9]{6}$/.test(jobId)) {
+  if (!/^[a-f0-9]{6,}$/.test(jobId)) {
+    log("bad job id:", jobId);
     sendText(res, 404, "Not Found");
     return;
   }
 
   const jobDir = path.join(DOWNLOADS_DIR, jobId);
-  const info = parseInfoFile(path.join(jobDir, "info.txt"));
+  const infoPath = path.join(jobDir, "info.txt");
 
-  if (info.STATUS !== "done" || !info.FILE_NAME) {
+  if (!fs.existsSync(infoPath)) {
+    log("no info.txt:", infoPath);
+    sendText(res, 404, "Not Found");
+    return;
+  }
+
+  const info = parseInfoFile(infoPath);
+
+  if (!info.FILE_NAME) {
+    log("FILE_NAME empty:", infoPath);
     sendText(res, 404, "Not Found");
     return;
   }
 
   const filePath = path.join(jobDir, info.FILE_NAME);
+
+  if (!fs.existsSync(filePath)) {
+    log("file not found:", filePath);
+    sendText(res, 404, "Not Found");
+    return;
+  }
+
+  log("download:", filePath);
 
   res.writeHead(200, {
     "Content-Type": "application/octet-stream",
@@ -67,21 +91,28 @@ const server = http.createServer((req, res) => {
     "Cache-Control": "no-store",
   });
 
-  fs.createReadStream(filePath).pipe(res);
+  fs.createReadStream(filePath).on("error", (err) => {
+    log("stream error:", err.message);
+    if (!res.headersSent) {
+      sendText(res, 500, "Internal Server Error");
+    } else {
+      res.destroy(err);
+    }
+  }).pipe(res);
 });
 
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
 function shutdown() {
-  console.log("Shutting down...");
+  log("Shutting down...");
 
   server.close(() => {
-    console.log("Server closed");
+    log("Server closed");
     process.exit(0);
   });
 }
 
 server.listen(PORT, HOST, () => {
-  console.log(`Listening on ${HOST}:${PORT}`);
+  log(`Listening on ${HOST}:${PORT}`);
 });

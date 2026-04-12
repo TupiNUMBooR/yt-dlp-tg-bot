@@ -13,18 +13,21 @@ services:
       context: ./ms-server
     restart: unless-stopped
     volumes:
-      - ./app/done:/app/done
+      - ./app/published:/app/published
 
   ms-cloudflared:
     build:
       context: ./ms-cloudflared
     restart: unless-stopped
-    depends_on:
-      - ms-server
     environment:
       TUNNEL_URL: http://ms-server:3000
     volumes:
       - ./app/shared:/app/shared
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:20241/ready >/dev/null 2>&1"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
 
   ms-downloader:
     build:
@@ -35,3 +38,18 @@ services:
       - ./app/downloading:/app/downloading
       - ./app/downloaded:/app/downloaded
       - ./app/failed:/app/failed
+
+  ms-publisher:
+    build:
+      context: ./ms-publisher
+    restart: unless-stopped
+    depends_on:
+      ms-cloudflared:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./app/downloaded:/app/downloaded
+      - ./app/published:/app/published
+      - ./app/failed:/app/failed
+      - ./app/shared:/app/shared
