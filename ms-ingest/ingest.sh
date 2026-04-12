@@ -54,6 +54,17 @@ create_job() {
   [[ -n "$request_message_id" ]] || return 0
   [[ -n "$source_url_raw" ]] || return 0
 
+  if [[ "$source_url_raw" == "/start" ]]; then
+    curl --silent --show-error --fail \
+      --request POST "$API_URL/sendMessage" \
+      --data-urlencode "chat_id=$chat_id" \
+      --data-urlencode "text=Send me a YouTube link, and I will return a download." \
+      --data "parse_mode=HTML" \
+      --data "reply_to_message_id=$request_message_id" \
+      >/dev/null
+    return 0
+  fi
+
   source_url="$(normalize_youtube_url "$source_url_raw")" || return 0
 
   created_at="$(date +%Y%m%d-%H%M%S)"
