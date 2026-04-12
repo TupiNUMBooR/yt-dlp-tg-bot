@@ -43,6 +43,8 @@ create_job() {
   local created_at=""
   local job_id=""
   local job_dir=""
+  local response_json=""
+  local response_message_id=""
 
   chat_id="$(jq -r '.message.chat.id // empty' <<< "$update_json")"
   request_message_id="$(jq -r '.message.message_id // empty' <<< "$update_json")"
@@ -59,18 +61,28 @@ create_job() {
   job_dir="${REQUESTED_DIR}/${job_id}"
 
   mkdir -p "$job_dir"
+  : > "${job_dir}/log.txt"
 
+  response_json="$(
+    curl --silent --show-error --fail \
+      --request POST "$API_URL/sendMessage" \
+      --data-urlencode "chat_id=$chat_id" \
+      --data-urlencode "text=⏳ Queued" \
+      --data "parse_mode=HTML" \
+      --data "reply_to_message_id=$request_message_id"
+  )"
+
+  response_message_id="$(jq -r '.result.message_id // empty' <<< "$response_json")"
+  [[ -n "$response_message_id" ]]
+
+  # потом сразу пишем готовый info.txt без перезаписей
   cat > "${job_dir}/info.txt" <<EOF
 CREATED_AT=${created_at}
 CHAT_ID=${chat_id}
 REQUEST_MESSAGE_ID=${request_message_id}
+RESPONSE_MESSAGE_ID=${response_message_id}
 SOURCE_URL=${source_url}
-RESPONSE_MESSAGE_ID=
-PUBLIC_URL=
-FILE_NAME=
 EOF
-
-  : > "${job_dir}/log.txt"
 
   log "Created job: ${job_id} -> ${source_url}"
 }

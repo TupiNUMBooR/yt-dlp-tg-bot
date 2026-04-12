@@ -2,6 +2,7 @@
 set -euo pipefail
 trap 'kill -TERM 0; wait' TERM INT
 
+API_URL="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN?}"
 YT_DLP_UPDATE_INTERVAL_SECONDS="${YT_DLP_UPDATE_INTERVAL_SECONDS:-3600}"
 SLEEP_SECONDS="${SLEEP_SECONDS:-3}"
 
@@ -33,6 +34,23 @@ set_kv() {
     { print }
     END { if (!done) print k "=" v }
   ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+}
+
+edit_telegram_message() {
+  chat_id="$1"
+  message_id="$2"
+  text="$3"
+
+  if ! curl --silent --show-error \
+    --request POST "$API_URL/editMessageText" \
+    --data-urlencode "chat_id=$chat_id" \
+    --data-urlencode "message_id=$message_id" \
+    --data-urlencode "text=$text" \
+    --data "parse_mode=HTML" \
+    > /dev/null; then
+
+    log "telegram edit failed (non-fatal)"
+  fi
 }
 
 update_yt_dlp() {
@@ -77,6 +95,18 @@ process() {
     mv "$down" "$fail"
     return
   fi
+
+  chat_id="$(get CHAT_ID "$info")"
+  response_message_id="$(get RESPONSE_MESSAGE_ID "$info")"
+
+  if [ -z "$chat_id" ] || [ -z "$response_message_id" ]; then
+    log "empty CHAT_ID or RESPONSE_MESSAGE_ID"
+    rm -rf "$fail"
+    mv "$down" "$fail"
+    return
+  fi
+
+  edit_telegram_message "$chat_id" "$response_message_id" "⬇️ Downloading"
 
   log "start $name -> $url"
 

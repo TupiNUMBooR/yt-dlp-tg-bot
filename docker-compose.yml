@@ -33,6 +33,8 @@ services:
     build:
       context: ./ms-downloader
     restart: unless-stopped
+    env_file:
+      - .env
     volumes:
       - ./app/requested:/app/requested
       - ./app/downloading:/app/downloading
