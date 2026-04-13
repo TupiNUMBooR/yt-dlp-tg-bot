@@ -33,3 +33,45 @@ SOURCE_URL=https://www.youtube.com/watch?v=JmurwMmeKY0
 RESPONSE_MESSAGE_ID=
 PUBLIC_URL=
 FILE_NAME=Into The Void [JmurwMmeKY0].mkv
+````
+
+Directories:
+
+* `/app/requested` — incoming tasks
+* `/app/downloaded` — downloaded files
+* `/app/published` — files served via HTTP
+* `/app/failed` — failed tasks
+* `/app/shared` — shared service data
+
+## Run
+
+```bash
+docker compose up -d --build
+```
+
+## Requirements
+
+Minimum:
+
+* `TELEGRAM_BOT_TOKEN`
+
+Optional (depending on setup):
+
+* Cloudflare tunnel config
+* mounted volumes for `/app/*` directories
+
+## Design idea
+
+Instead of one complex service, this is a chain of simple ones:
+
+* receive link
+* download file
+* expose it
+* send result
+
+This keeps everything easy to debug, restart, and modify without turning the system into spaghetti.
+
+## Status
+
+Personal project.
+Focused on simplicity, file-based queues, and Docker restarts rather than highload or strict architecture.
