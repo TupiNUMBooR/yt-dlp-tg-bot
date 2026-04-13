@@ -75,3 +75,12 @@ services:
       - ./app/published:/app/published
       - ./app/failed:/app/failed
       - ./app/shared:/app/shared
+
+  ms-cleaner:
+    image: ghcr.io/tupinumboor/pipeline-cleaner:1.1.0
+    restart: unless-stopped
+    environment:
+      DIR_MAX_AGE_DAYS: 2
+    volumes:
+      - ./app/published:/clean/published
+      - ./app/failed:/clean/failed
