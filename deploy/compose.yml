@@ -1,7 +1,6 @@
 services:
   ms-ingest:
-    image: ghcr.io/tupinumboor/ydtb-ingest:local
-    build: ./ms-ingest
+    image: ghcr.io/tupinumboor/ydtb-ingest:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -9,15 +8,13 @@ services:
       - ./app/requested:/app/requested
 
   ms-server:
-    image: ghcr.io/tupinumboor/ydtb-server:local
-    build: ./ms-server
+    image: ghcr.io/tupinumboor/ydtb-server:latest
     restart: unless-stopped
     volumes:
       - ./app/published:/app/published
 
   ms-cloudflared:
-    image: ghcr.io/tupinumboor/ydtb-cloudflared:local
-    build: ./ms-cloudflared
+    image: ghcr.io/tupinumboor/ydtb-cloudflared:latest
     restart: unless-stopped
     environment:
       TUNNEL_URL: http://ms-server:3000
@@ -30,8 +27,7 @@ services:
       retries: 30
 
   ms-downloader:
-    image: ghcr.io/tupinumboor/ydtb-downloader:local
-    build: ./ms-downloader
+    image: ghcr.io/tupinumboor/ydtb-downloader:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -42,8 +38,7 @@ services:
       - ./app/failed:/app/failed
 
   ms-publisher:
-    image: ghcr.io/tupinumboor/ydtb-publisher:local
-    build: ./ms-publisher
+    image: ghcr.io/tupinumboor/ydtb-publisher:latest
     restart: unless-stopped
     depends_on:
       ms-cloudflared:
