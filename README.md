@@ -106,6 +106,7 @@ This script:
 
 [`Settings` → `Secrets and variables` → `Actions`](https://github.com/TupiNUMBooR/yt-dlp-tg-bot/settings/secrets/actions)
 
+* `DEPLOY_ENABLED` = `true` (required to enable deployment)
 * `SSH_ADDRESS` = value from `.env`
 * `SSH_PRIVATE_KEY` = contents of `deploy/keys/github_actions`
 * `SSH_KNOWN_HOSTS` = contents of `deploy/keys/known_hosts`
