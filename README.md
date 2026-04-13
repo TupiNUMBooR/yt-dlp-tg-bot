@@ -75,3 +75,63 @@ This keeps everything easy to debug, restart, and modify without turning the sys
 
 Personal project.
 Focused on simplicity, file-based queues, and Docker restarts rather than highload or strict architecture.
+
+## GitHub Actions setup
+
+This project builds Docker images on GitHub and deploys them to a remote server over SSH.
+
+### Setup
+
+1. Upload `.env` to the server:
+
+```bash
+./deploy/upload-env.sh
+```
+
+2. Generate deploy keys and add the public key to the server:
+
+```bash
+./deploy/setup-github-actions.sh
+```
+
+This script:
+
+* creates `deploy/keys/github_actions`
+* creates `deploy/keys/github_actions.pub`
+* creates `deploy/keys/known_hosts`
+* adds `deploy/keys/github_actions.pub` to `~/.ssh/authorized_keys` on the server
+* verifies SSH access using the generated key
+
+3. Add GitHub secrets:
+
+[`Settings` → `Secrets and variables` → `Actions`](https://github.com/TupiNUMBooR/yt-dlp-tg-bot/settings/secrets/actions)
+
+* `SSH_ADDRESS` = value from `.env`
+* `SSH_PRIVATE_KEY` = contents of `deploy/keys/github_actions`
+* `SSH_KNOWN_HOSTS` = contents of `deploy/keys/known_hosts`
+
+### How deploy works
+
+Deploy is triggered by git tags only.
+
+When you push a tag like:
+
+```txt
+1.0.0
+```
+
+GitHub Actions:
+
+* builds Docker images
+* pushes them to GHCR
+* connects to the server over SSH
+* uploads `deploy/compose.yml`
+* runs deployment on the server with `TAG=1.0.0`
+
+### Example release
+
+```bash
+git tag 1.0.0
+git push
+git push --tags
+```
