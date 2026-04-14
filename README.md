@@ -2,7 +2,7 @@
 
 A Telegram bot that downloads YouTube videos using `yt-dlp`, exposes them via a temporary HTTP link, and sends the result back to Telegram.
 
-<img src="docs/preview.jpg" height="600">
+<img src="docs/preview.jpg" height="400">
 
 ![CI/CD](https://github.com/TupiNUMBooR/yt-dlp-tg-bot/actions/workflows/ci-cd.yml/badge.svg)
 ![Latest Release](https://img.shields.io/github/release/TupiNUMBooR/yt-dlp-tg-bot)
