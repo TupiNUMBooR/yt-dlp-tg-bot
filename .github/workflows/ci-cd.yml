@@ -1,4 +1,4 @@
-name: docker
+name: CI/CD
 
 on:
   push:
@@ -6,18 +6,12 @@ on:
       - "*.*.*"
   workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: write
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/tupinumboor
-  REMOTE_DIR: ~/ydtb
-
 jobs:
   docker:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -43,7 +37,7 @@ jobs:
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -51,7 +45,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}
+          images: ghcr.io/tupinumboor/${{ matrix.image }}
           tags: |
             type=ref,event=tag
             type=semver,pattern={{version}}
@@ -66,43 +60,55 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  release:
+    runs-on: ubuntu-latest
+    needs: docker
+    permissions:
+      contents: write
+    if: github.ref_type == 'tag'
+
+    steps:
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
+
   deploy:
     runs-on: ubuntu-latest
     needs: docker
-    if: github.ref_type == 'tag' && vars.DEPLOY_ENABLED == 'true'
+    if: vars.DEPLOY_ENABLED == 'true'
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Resolve deploy tag
-        id: vars
-        shell: bash
-        run: |
-          echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Prepare SSH
         shell: bash
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+          printf '%s' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
       - name: Upload deploy files
         shell: bash
         run: |
-          ssh "${{ secrets.SSH_ADDRESS }}" "mkdir -p ${REMOTE_DIR}"
-          scp deploy/compose.yml "${{ secrets.SSH_ADDRESS }}:${REMOTE_DIR}/docker-compose.yml"
+          ssh "${{ secrets.SSH_ADDRESS }}" "mkdir -p ${{ vars.REMOTE_DIR }}"
+          scp deploy/compose.yml "${{ secrets.SSH_ADDRESS }}:${{ vars.REMOTE_DIR }}/docker-compose.yml"
 
       - name: Deploy
         shell: bash
         run: |
           ssh "${{ secrets.SSH_ADDRESS }}" "
-            set -euo pipefail
-            cd ${REMOTE_DIR}
-            TAG=${{ steps.vars.outputs.tag }} docker-compose pull
-            TAG=${{ steps.vars.outputs.tag }} docker-compose down
-            TAG=${{ steps.vars.outputs.tag }} docker-compose up -d
+            set -eu
+            cd ${{ vars.REMOTE_DIR }}
+            docker-compose pull
+            docker-compose down
+            docker-compose up -d
           "

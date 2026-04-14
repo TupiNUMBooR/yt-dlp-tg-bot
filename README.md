@@ -2,7 +2,17 @@
 
 A Telegram bot that downloads YouTube videos using `yt-dlp`, exposes them via a temporary HTTP link, and sends the result back to Telegram.
 
-## How it works
+![preview](docs/preview.jpg)
+
+![CI/CD](https://github.com/TupiNUMBooR/yt-dlp-tg-bot/actions/workflows/ci-cd.yml/badge.svg)
+![Latest Release](https://img.shields.io/github/release/TupiNUMBooR/yt-dlp-tg-bot)
+![Release Date](https://img.shields.io/github/release-date/TupiNUMBooR/yt-dlp-tg-bot)
+
+![Top Lang](https://img.shields.io/github/languages/top/TupiNUMBooR/yt-dlp-tg-bot?logo=gnubash)
+![Docker](https://img.shields.io/badge/docker-ghcr-blue?logo=docker)
+![Deploy](https://img.shields.io/badge/deploy-ssh-blue)
+
+## Usage
 
 The project is split into simple microservices:
 
@@ -12,16 +22,19 @@ The project is split into simple microservices:
 - **ms-downloader**
   Takes tasks from `/app/requested`, downloads files via `yt-dlp`, and moves them to `/app/downloaded`.
 
+- **ms-cloudflared**
+  Starts a Cloudflare Quick Tunnel and stores the public base URL in `/app/shared`.
+
+- **ms-publisher**
+  Watches `/app/downloaded`, builds a public URL using link from `/app/shared/`, moves files to `/app/published`, and sends a reply in Telegram.
+
 - **ms-server**
   Serves published files over HTTP from `/app/published/<id>`.
 
-- **ms-cloudflared**
-  Starts a Cloudflare Quick Tunnel and stores the public base URL in a shared file.
+- **ms-cleaner**
+  Periodically removes old files from `/app/published` and `/app/failed`.
 
-- **ms-publisher**
-  Watches `/app/downloaded`, builds a public URL, moves files to `/app/published`, and sends a reply in Telegram.
-
-## Data structure
+### Data structure
 
 Each task is a folder with an `info.txt`, for example:
 
@@ -33,106 +46,98 @@ SOURCE_URL=https://www.youtube.com/watch?v=JmurwMmeKY0
 RESPONSE_MESSAGE_ID=
 PUBLIC_URL=
 FILE_NAME=Into The Void [JmurwMmeKY0].mkv
-````
+```
 
 Directories:
 
-* `/app/requested` — incoming tasks
-* `/app/downloaded` — downloaded files
-* `/app/published` — files served via HTTP
-* `/app/failed` — failed tasks
-* `/app/shared` — shared service data
+- `/app/requested` — incoming tasks
+- `/app/downloaded` — downloaded files
+- `/app/published` — files served via HTTP
+- `/app/failed` — failed tasks
+- `/app/shared` — shared service data
 
 ## Run
+
+### Create .env
+
+```bash
+TELEGRAM_BOT_TOKEN="123:zxc"
+```
+
+### Start
 
 ```bash
 docker compose up -d --build
 ```
 
-## Requirements
+Send a link to the bot.
 
-Minimum:
+## Deploy
 
-* `TELEGRAM_BOT_TOKEN`
+Builds Docker images and deploys them to a remote server over SSH.
 
-Optional (depending on setup):
+### Add lines to .env
 
-* Cloudflare tunnel config
-* mounted volumes for `/app/*` directories
+```bash
+SSH_ADDRESS=user@11.11.11.11
+REMOTE_DIR="~/ydtb"
+```
 
-## Design idea
+- `SSH_ADDRESS` — deploy target (`user@host`)
+- `REMOTE_DIR` — deploy directory on the server
 
-Instead of one complex service, this is a chain of simple ones:
+Note:
 
-* receive link
-* download file
-* expose it
-* send result
+- be careful with `REMOTE_DIR` — paths with spaces may not work, check script usage
 
-This keeps everything easy to debug, restart, and modify without turning the system into spaghetti.
-
-## Status
-
-Personal project.
-Focused on simplicity, file-based queues, and Docker restarts rather than highload or strict architecture.
-
-## GitHub Actions setup
-
-This project builds Docker images on GitHub and deploys them to a remote server over SSH.
-
-### Setup
-
-1. Upload `.env` to the server:
+### Upload `.env` to the server
 
 ```bash
 ./deploy/upload-env.sh
 ```
 
-2. Generate deploy keys and add the public key to the server:
+### Setup deploy SSH access
 
 ```bash
-./deploy/setup-github-actions.sh
+./deploy/setup-deploy-access.sh
 ```
 
-This script:
+Creates:
 
-* creates `deploy/keys/github_actions`
-* creates `deploy/keys/github_actions.pub`
-* creates `deploy/keys/known_hosts`
-* adds `deploy/keys/github_actions.pub` to `~/.ssh/authorized_keys` on the server
-* verifies SSH access using the generated key
+- `deploy/keys/github_actions` (private key)
+- `deploy/keys/github_actions.pub` (public key)
+- `deploy/keys/known_hosts`
 
-3. Add GitHub secrets:
+Also:
 
-[`Settings` → `Secrets and variables` → `Actions`](https://github.com/TupiNUMBooR/yt-dlp-tg-bot/settings/secrets/actions)
+- adds the public key to `~/.ssh/authorized_keys` on the server
+- verifies SSH access
 
-* variable `DEPLOY_ENABLED` = `true` (required to enable deployment)
-* secret `SSH_ADDRESS` = value from `.env`
-* secret `SSH_PRIVATE_KEY` = contents of `deploy/keys/github_actions`
-* secret `SSH_KNOWN_HOSTS` = contents of `deploy/keys/known_hosts`
+### Configure [GitHub Actions](https://github.com/TupiNUMBooR/yt-dlp-tg-bot/settings/secrets/actions)
 
-### How deploy works
+Variables:
 
-Deploy is triggered by git tags only.
+- `DEPLOY_ENABLED` = `true`
+- `REMOTE_DIR` = same as in deploy `.env`
 
-When you push a tag like:
+Secrets:
 
-```txt
-1.0.0
-```
+- `SSH_ADDRESS` = from deploy `.env`
+- `SSH_PRIVATE_KEY` = contents of `deploy/keys/github_actions`
+- `SSH_KNOWN_HOSTS` = contents of `deploy/keys/known_hosts`
 
-GitHub Actions:
-
-* builds Docker images
-* pushes them to GHCR
-* connects to the server over SSH
-* uploads `deploy/compose.yml`
-* runs deployment on the server with `TAG=1.0.0`
-
-### Example release
+### Release
 
 ```bash
 git tag 1.0.0
 git push
 git push --tags
 ```
+
+GitHub Actions will:
+
+- build Docker images (`latest`, `1.0`, `1.0.0`)
+- push them to GHCR
+- connect to the server over SSH
+- upload `deploy/compose.yml`
+- update running containers with new images
