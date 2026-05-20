@@ -1,5 +1,8 @@
 FROM python:3.13-alpine
 
+ARG VERSION=dev
+ENV VERSION=$VERSION
+
 WORKDIR /app
 
 RUN apk add --no-cache bash curl ffmpeg deno

@@ -82,6 +82,7 @@ send_status() {
   local downloaded_count=""
   local published_count=""
   local failed_count=""
+  local version="${VERSION:-dev}"
 
   requested_count="$(count_dirs /app/requested)"
   downloaded_count="$(count_dirs /app/downloaded)"
@@ -89,6 +90,8 @@ send_status() {
   failed_count="$(count_dirs /app/failed)"
 
   send_message "$chat_id" "📊 Status
+
+🧩 Version: ${version}
 
 ⏳ Requested: ${requested_count}
 📥 Downloaded: ${downloaded_count}

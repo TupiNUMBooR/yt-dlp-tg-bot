@@ -1,5 +1,8 @@
 FROM alpine:3.22
 
+ARG VERSION=dev
+ENV VERSION=$VERSION
+
 WORKDIR /app
 
 RUN apk add --no-cache bash curl

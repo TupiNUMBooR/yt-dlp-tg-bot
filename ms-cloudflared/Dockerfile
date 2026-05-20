@@ -1,5 +1,8 @@
 FROM alpine:3.22
 
+ARG VERSION=dev
+ENV VERSION=$VERSION
+
 RUN apk add --no-cache ca-certificates curl grep
 
 # install cloudflared
