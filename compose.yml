@@ -7,6 +7,9 @@ services:
       - .env
     volumes:
       - ./app/requested:/app/requested
+      - ./app/downloaded:/app/downloaded:ro
+      - ./app/published:/app/published:ro
+      - ./app/failed:/app/failed:ro
 
   ms-server:
     image: ghcr.io/tupinumboor/ydtb-server:local

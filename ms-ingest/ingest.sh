@@ -18,7 +18,12 @@ generate_id() {
 count_dirs() {
   local dir="$1"
 
-  find "$dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
+  if [[ ! -d "$dir" ]]; then
+    printf '?\n'
+    return 0
+  fi
+
+  find "$dir" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' '
 }
 
 send_message() {
