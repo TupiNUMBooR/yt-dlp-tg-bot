@@ -12,20 +12,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - service: ms-ingest
-            image: ydtb-ingest
-          - service: ms-server
-            image: ydtb-server
-          - service: ms-cloudflared
-            image: ydtb-cloudflared
-          - service: ms-downloader
-            image: ydtb-downloader
-          - service: ms-publisher
-            image: ydtb-publisher
 
     steps:
       - name: Checkout
@@ -45,17 +31,18 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/tupinumboor/${{ matrix.image }}
+          images: ghcr.io/tupinumboor/yt-dlp-tg-bot
           tags: |
             type=ref,event=tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
             type=sha,prefix=sha-
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: ./${{ matrix.service }}
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

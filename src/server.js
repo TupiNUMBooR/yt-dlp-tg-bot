@@ -3,11 +3,11 @@ const fs = require("fs");
 const path = require("path");
 
 const HOST = "0.0.0.0";
-const PORT = Number(process.env.PORT || 3000);
-const DOWNLOADS_DIR = "/app/published";
+const PORT = Number(process.env.SERVER_PORT || process.env.PORT || 3000);
+const DOWNLOADS_DIR = process.env.DOWNLOADS_DIR || "/downloads";
 
 function log(...args) {
-  console.log("[ms-server]", ...args);
+  console.log("[server]", ...args);
 }
 
 function parseInfoFile(infoPath) {
@@ -43,6 +43,23 @@ function buildContentDisposition(fileName) {
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(safeName)}`;
 }
 
+function findFileFromInfo(videoDir, info) {
+  if (info.FILE_NAME) {
+    const filePath = path.join(videoDir, info.FILE_NAME);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) return filePath;
+  }
+
+  for (const name of fs.readdirSync(videoDir)) {
+    if (name === "info.txt" || name === "log.txt" || name === "requests") continue;
+    if (name.endsWith(".part") || name.endsWith(".ytdl")) continue;
+
+    const filePath = path.join(videoDir, name);
+    if (fs.statSync(filePath).isFile()) return filePath;
+  }
+
+  return null;
+}
+
 const server = http.createServer((req, res) => {
   log(req.method, req.url);
 
@@ -58,16 +75,16 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const jobId = reqPath.replace(/^\/+/, "");
+  const videoId = decodeURIComponent(reqPath.replace(/^\/+/, "")).split("/")[0];
 
-  if (!/^[a-f0-9]{6,}$/.test(jobId)) {
-    log("bad job id:", jobId);
+  if (!/^[A-Za-z0-9_-]{6,}$/.test(videoId)) {
+    log("bad video id:", videoId);
     sendText(res, 404, "Not Found");
     return;
   }
 
-  const jobDir = path.join(DOWNLOADS_DIR, jobId);
-  const infoPath = path.join(jobDir, "info.txt");
+  const videoDir = path.join(DOWNLOADS_DIR, videoId);
+  const infoPath = path.join(videoDir, "info.txt");
 
   if (!fs.existsSync(infoPath)) {
     log("no info.txt:", infoPath);
@@ -77,26 +94,27 @@ const server = http.createServer((req, res) => {
 
   const info = parseInfoFile(infoPath);
 
-  if (!info.FILE_NAME) {
-    log("FILE_NAME empty:", infoPath);
+  if (info.STATUS !== "downloaded") {
+    log("not downloaded:", videoId, info.STATUS);
     sendText(res, 404, "Not Found");
     return;
   }
 
-  const filePath = path.join(jobDir, info.FILE_NAME);
+  const filePath = findFileFromInfo(videoDir, info);
 
-  if (!fs.existsSync(filePath)) {
-    log("file not found:", filePath);
+  if (!filePath) {
+    log("file not found:", videoDir);
     sendText(res, 404, "Not Found");
     return;
   }
 
+  const fileName = path.basename(filePath);
   const stat = fs.statSync(filePath);
   log("download:", filePath, `(${stat.size} bytes)`);
 
   res.writeHead(200, {
     "Content-Type": "application/octet-stream",
-    "Content-Disposition": buildContentDisposition(info.FILE_NAME),
+    "Content-Disposition": buildContentDisposition(fileName),
     "Content-Length": stat.size,
     "Cache-Control": "no-store",
   });
@@ -115,14 +133,10 @@ process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
 function shutdown() {
-  log("Shutting down...");
-
-  server.close(() => {
-    log("Server closed");
-    process.exit(0);
-  });
+  log("shutting down");
+  server.close(() => process.exit(0));
 }
 
 server.listen(PORT, HOST, () => {
-  log(`Listening on ${HOST}:${PORT}`);
+  log(`listening on ${HOST}:${PORT}`);
 });

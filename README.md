@@ -1,6 +1,6 @@
 # yt-dlp-tg-bot
 
-A Telegram bot that downloads YouTube videos using `yt-dlp`, exposes them via a temporary HTTP link, and sends the result back to Telegram.
+A Telegram bot that downloads YouTube videos using `yt-dlp`, exposes them through a temporary Cloudflare tunnel, and sends the download link back to Telegram.
 
 <img src="docs/preview.jpg" height="400">
 
@@ -12,53 +12,109 @@ A Telegram bot that downloads YouTube videos using `yt-dlp`, exposes them via a 
 ![Docker](https://img.shields.io/badge/docker-ghcr-blue?logo=docker)
 ![Deploy](https://img.shields.io/badge/deploy-ssh-blue)
 
-## Usage
+## How it works
 
-The project is split into simple microservices:
+The bot is one Docker container with small internal workers. Source code lives in `src/`, tests live in `test/`.
 
-- **ms-ingest**
-  Polls Telegram, extracts YouTube links, and creates tasks in `/app/requested`.
+- **ingest-worker.sh** polls Telegram, extracts YouTube links, creates video folders, and subscribes chats to updates.
+- **downloader-worker.sh** downloads requested videos with `yt-dlp`.
+- **notifier-worker.sh** sends or edits Telegram status messages for active requests.
+- **cloudflared-worker.sh** starts a Cloudflare Quick Tunnel and writes the public URL to `/app/shared/public-base-url.txt`.
+- **server.js** serves downloaded files from `/downloads`.
+- **cleaner-worker.sh** removes old downloaded or failed videos.
 
-- **ms-downloader**
-  Takes tasks from `/app/requested`, downloads files via `yt-dlp`, and moves them to `/app/downloaded`.
+Video state lives in `/downloads/<video_id>/info.txt`.
+Active Telegram requests live in `/downloads/<video_id>/requests/<chat_id>.txt` and are removed after a final success or failure message.
 
-- **ms-cloudflared**
-  Starts a Cloudflare Quick Tunnel and stores the public base URL in `/app/shared`.
-
-- **ms-publisher**
-  Watches `/app/downloaded`, builds a public URL using link from `/app/shared/`, moves files to `/app/published`, and sends a reply in Telegram.
-
-- **ms-server**
-  Serves published files over HTTP from `/app/published/<id>`.
-
-- **ms-cleaner**
-  Periodically removes old files from `/app/published` and `/app/failed`.
-
-### Data structure
-
-Each task is a folder with an `info.txt`, for example:
+### Video structure
 
 ```txt
-CREATED_AT=20260412-151919
-CHAT_ID=1722385747
-REQUEST_MESSAGE_ID=25
-SOURCE_URL=https://www.youtube.com/watch?v=JmurwMmeKY0
-RESPONSE_MESSAGE_ID=
-PUBLIC_URL=
-FILE_NAME=Into The Void [JmurwMmeKY0].mkv
+/downloads/JmurwMmeKY0/
+  info.txt
+  log.txt
+  Into The Void [JmurwMmeKY0].mkv
+  requests/
+    1722385747.txt
 ```
 
-Directories:
+### Video statuses
 
-- `/app/requested` — incoming tasks
-- `/app/downloaded` — downloaded files
-- `/app/published` — files served via HTTP
-- `/app/failed` — failed tasks
-- `/app/shared` — shared service data
+```txt
+requested
+downloading
+downloaded
+failed
+```
+
+### info.txt example
+
+```txt
+VIDEO_ID=JmurwMmeKY0
+SOURCE_URL=https://www.youtube.com/watch?v=JmurwMmeKY0
+STATUS=downloaded
+FILE_NAME=Into The Void [JmurwMmeKY0].mkv
+CREATED_AT=20260621-153022
+UPDATED_AT=20260621-153122
+EXPIRES_AT_EPOCH=1782051082
+FAIL_COUNT=0
+LAST_ERROR=
+```
+
+### request file example
+
+```txt
+CHAT_ID=1722385747
+REQUEST_MESSAGE_ID=25
+RESPONSE_MESSAGE_ID=26
+FAIL_COUNT=0
+UPDATED_AT=20260621-153100
+```
+
+
+### Project structure
+
+```txt
+src/
+  entrypoint.sh
+  server.js
+  bin/
+    ingest-worker.sh
+    downloader-worker.sh
+    notifier-worker.sh
+    cleaner-worker.sh
+    cloudflared-worker.sh
+  lib/
+    config.sh
+    log.sh
+    kv.sh
+    youtube.sh
+    files.sh
+    video.sh
+    telegram.sh
+    notify.sh
+
+test/
+  test_entrypoint.sh
+  test_*.sh
+```
+
+Tests are written with the same rule as the app: `test -> ../src`.
+
+Run them locally:
+
+```bash
+./test/test_entrypoint.sh
+```
+
+Or run them through Docker build:
+
+```bash
+docker build --target test .
+```
 
 ## Run
 
-### Create .env
+### Create `.env`
 
 ```bash
 TELEGRAM_BOT_TOKEN="123:zxc"
@@ -70,13 +126,13 @@ TELEGRAM_BOT_TOKEN="123:zxc"
 docker compose up -d --build
 ```
 
-Send a link to the bot.
+Send a [YouTube link](https://youtu.be/4uhRJO3v52U) to the bot.
 
 ## Deploy
 
-Builds Docker images and deploys them to a remote server over SSH.
+Builds a Docker image and deploys it to a remote server over SSH.
 
-### Add lines to .env
+### Add lines to `.env`
 
 ```bash
 SSH_ADDRESS=user@11.11.11.11
@@ -140,4 +196,4 @@ GitHub Actions will:
 - push them to GHCR
 - connect to the server over SSH
 - upload `deploy/compose.yml`
-- update running containers with new images
+- update the running container

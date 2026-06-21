@@ -1,69 +1,9 @@
 services:
-  ms-ingest:
-    image: ghcr.io/tupinumboor/ydtb-ingest:local
-    build: ./ms-ingest
+  yt-dlp-tg-bot:
+    image: ghcr.io/tupinumboor/yt-dlp-tg-bot:local
+    build: .
     restart: unless-stopped
     env_file:
       - .env
     volumes:
-      - ./app/requested:/app/requested
-      - ./app/downloaded:/app/downloaded:ro
-      - ./app/published:/app/published:ro
-      - ./app/failed:/app/failed:ro
-
-  ms-server:
-    image: ghcr.io/tupinumboor/ydtb-server:local
-    build: ./ms-server
-    restart: unless-stopped
-    volumes:
-      - ./app/published:/app/published
-
-  ms-cloudflared:
-    image: ghcr.io/tupinumboor/ydtb-cloudflared:local
-    build: ./ms-cloudflared
-    restart: unless-stopped
-    environment:
-      TUNNEL_URL: http://ms-server:3000
-    volumes:
-      - ./app/shared:/app/shared
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:20241/ready >/dev/null 2>&1"]
-      interval: 1s
-      timeout: 1s
-      retries: 30
-
-  ms-downloader:
-    image: ghcr.io/tupinumboor/ydtb-downloader:local
-    build: ./ms-downloader
-    restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - ./app/requested:/app/requested
-      - ./app/downloading:/app/downloading
-      - ./app/downloaded:/app/downloaded
-      - ./app/failed:/app/failed
-
-  ms-publisher:
-    image: ghcr.io/tupinumboor/ydtb-publisher:local
-    build: ./ms-publisher
-    restart: unless-stopped
-    depends_on:
-      ms-cloudflared:
-        condition: service_healthy
-    env_file:
-      - .env
-    volumes:
-      - ./app/downloaded:/app/downloaded
-      - ./app/published:/app/published
-      - ./app/failed:/app/failed
-      - ./app/shared:/app/shared
-
-  ms-cleaner:
-    image: ghcr.io/tupinumboor/pipeline-cleaner:1.1.0
-    restart: unless-stopped
-    environment:
-      DIR_MAX_AGE_DAYS: 2
-    volumes:
-      - ./app/published:/clean/published
-      - ./app/failed:/clean/failed
+      - ./downloads:/downloads
